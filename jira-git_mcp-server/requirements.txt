@@ -1,0 +1,5 @@
+python-dotenv
+aiohttp
+mcp
+google-auth
+google-genai
