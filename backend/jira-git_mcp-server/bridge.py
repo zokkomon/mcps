@@ -20,9 +20,9 @@ load_dotenv()
 
 # --- CONFIGURATION ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-TARGET_REPO_OWNER = "zokkomon"
-TARGET_REPO_NAME = "mcps"
-JIRA_PROJECT_KEY = "KAN"
+TARGET_REPO_OWNER = ""
+TARGET_REPO_NAME = ""
+JIRA_PROJECT_KEY = ""
 
 if GEMINI_API_KEY:
     genai_client = genai.Client(api_key=GEMINI_API_KEY)
