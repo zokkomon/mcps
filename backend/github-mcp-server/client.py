@@ -1,7 +1,7 @@
 import asyncio
-import os
 import json
-from typing import Optional, Dict, Any, List
+import os
+from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -13,10 +13,10 @@ class GitHubMCPClient:
         self.github_token = os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
         if not self.github_token:
             raise ValueError("GitHub token is required.")
-        
         self.session: Optional[ClientSession] = None
 
     async def connect(self):
+        print(f"Connecting to MCP server... (PID: {os.getpid()})")
         server_params = StdioServerParameters(
             command="docker",
             args=[
@@ -28,19 +28,18 @@ class GitHubMCPClient:
             ],
             env=os.environ.copy()
         )
-
         self._stdio_context = stdio_client(server_params)
         self._read, self._write = await self._stdio_context.__aenter__()
         self._session_context = ClientSession(self._read, self._write)
         self.session = await self._session_context.__aenter__()
         await self.session.initialize()
-        print("Connected to GitHub MCP Server")
+        print("Connected to GitHub MCP Server\n")
 
     async def disconnect(self):
         if self.session:
             await self._session_context.__aexit__(None, None, None)
             await self._stdio_context.__aexit__(None, None, None)
-            print("Disconnected")
+            print("\nDisconnected")
 
     async def __aenter__(self):
         await self.connect()
@@ -53,20 +52,18 @@ class GitHubMCPClient:
         try:
             return await self.session.call_tool(tool_name, arguments)
         except Exception as e:
-            print(f"System Error calling {tool_name}: {e}")
+            print(f"Error calling {tool_name}: {e}")
             return None
 
     def safe_parse(self, result, source_name="Unknown"):
         if not result or not result.content:
             return None
-        
         raw_text = result.content[0].text.strip()
-        if not raw_text: return None
-
+        if not raw_text: 
+            return None
         try:
             return json.loads(raw_text)
         except json.JSONDecodeError:
-            print(f"{source_name} returned text: \"{raw_text}\"")
             return raw_text
 
     async def get_current_user(self):
@@ -74,49 +71,86 @@ class GitHubMCPClient:
         return self.safe_parse(result, "get_me")
 
     async def list_issues(self, owner: str, repo: str):
-        # FIXED: Changed "open" to "OPEN"
         result = await self.call_tool("list_issues", {
             "owner": owner, 
             "repo": repo,
             "state": "OPEN", 
-            "per_page": 5
+            "perPage": 5
         })
         return self.safe_parse(result, "list_issues")
 
-    async def list_commits(self, owner: str, repo: str):
-        result = await self.call_tool("list_commits", {
-            "owner": owner, 
-            "repo": repo,
-            "per_page": 5
-        })
-        return self.safe_parse(result, "list_commits")
+    async def search_repos(self, org_name: str):
+        all_repos = []
+        page = 1
+        
+        while True:
+            result = await self.call_tool("search_repositories", {
+                "query": f"org:{org_name}",
+                "minimal_output": True,
+                "perPage": 100,
+                "page": page
+            })
+            
+            data = self.safe_parse(result, "search_repositories")
+            
+            if not data or "items" not in data or len(data["items"]) == 0:
+                break
+            
+            all_repos.extend(data["items"])
+            
+            # Check if we've retrieved all repositories
+            total_count = data.get("total_count", 0)
+            if len(all_repos) >= total_count:
+                break
+            
+            page += 1
+            await asyncio.sleep(0.2)          
+        return {"items": all_repos, "total_count": len(all_repos)}
+
 
 async def main():
-    TARGET_OWNER = "zokkomon" 
-    TARGET_REPO = "mcps"
+    print(f"main() called in PID {os.getpid()}\n")
+    
+    try:
+        async with GitHubMCPClient() as client:
+            user = await client.get_current_user()
+            username = user.get("login")
+            print(f"Authenticated as: {username}\n")
+            orgname = 'InfiniumDevIO'
+            
+            print("Fetching all repositories...")
+            repos = await client.search_repos(orgname)
+            
+            if repos and "items" in repos:
+                total = len(repos["items"])
+                print(f"Found {total} repos\n")
+                
+                for i, repo in enumerate(repos["items"], 1):
+                    try:
+                        full_name = repo["full_name"]
+                        owner, name = full_name.split("/")
+                        visibility = "Private" if repo.get("private") else "Public"
+                        
+                        print(f"[{i}/{total}] {owner}/{name} - {visibility}")
+                        
+                        issues = await client.list_issues(owner, name)
+                        if issues and isinstance(issues, list) and len(issues) > 0:
+                            print(f"  └─ {len(issues)} open issues")
+                        
+                        await asyncio.sleep(0.2)
+                        
+                    except Exception as e:
+                        print(f"[{i}/{total}] Error: {e}")
+                
+                print(f"\nProcessed all {total} repositories")
+            else:
+                print("No repositories found")
+                
+    except Exception as e:
+        print(f"\nFatal error: {e}")
+        import traceback
+        traceback.print_exc()
 
-    async with GitHubMCPClient() as client:
-        user = await client.get_current_user()
-        if isinstance(user, dict):
-            print(f"1. AUTH CHECK:{user.get('login')}")
-
-        print(f"\n--- 2. ISSUES CHECK ({TARGET_OWNER}/{TARGET_REPO}) ---")
-        issues = await client.list_issues(TARGET_OWNER, TARGET_REPO)
-        
-        if isinstance(issues, list):
-            print(f"Found {len(issues)} issues.")
-            for issue in issues:
-                print(f"  2. ISSUES CHECK ({TARGET_OWNER}/{TARGET_REPO}) {issue.get('number')}: {issue.get('title')}")
-        elif isinstance(issues, str):
-            print(f"Server Message: {issues}")
-        else:
-            print("No open issues found.\n")
-
-        commits = await client.list_commits(TARGET_OWNER, TARGET_REPO)
-        if isinstance(commits, list):
-            for c in commits:
-                msg = c.get('commit', {}).get('message', '').split('\n')[0]
-                print(f" 3. COMMITS CHECK:{msg[:50]}...")
 
 if __name__ == "__main__":
     asyncio.run(main())
