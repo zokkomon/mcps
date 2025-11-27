@@ -1,10 +1,11 @@
 import asyncio
 import os
 import sys
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from dotenv import load_dotenv
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -58,179 +59,122 @@ class HubSpotMCPClient:
         except Exception as e:
             return f"Error calling tool {tool_name}: {str(e)}"
 
-    async def read_resource(self, uri: str) -> str:
-        try:
-            result = await self.session.read_resource(uri)
-            if result and result.contents:
-                return result.contents[0].text
-            return "No content returned"
-        except Exception as e:
-            return f"Error reading resource {uri}: {str(e)}"
-
     # === Tool Wrappers ===
 
-    async def list_contacts(self, limit: Optional[int] = None, fetch_all: bool = True):
-        """
-        List contacts from HubSpot.
-        
-        Args:
-            limit: Maximum number of contacts to return (None = all)
-            fetch_all: Whether to fetch all pages (pagination)
-        """
-        args = {"fetch_all": fetch_all}
-        if limit is not None:
-            args["limit"] = limit
-        return await self.call_tool("list_contacts", args)
-
     async def list_contacts_by_date_range(self, start_date: str, end_date: str, limit: int = 100):
-        """
-        Get contacts created within a date range.
-        
-        Args:
-            start_date: Start date (YYYY-MM-DD)
-            end_date: End date (YYYY-MM-DD)
-            limit: Maximum contacts to return
-        """
+        """Get contacts created within a date range."""
         return await self.call_tool("list_contacts_by_date_range", {
             "start_date": start_date,
             "end_date": end_date,
             "limit": limit
         })
 
-    async def get_contact_status(self, email: str):
-        """Get the status and details of a contact."""
-        return await self.call_tool("get_contact_status", {"email": email})
-
-    async def get_activities(self, contact_email: str, limit: Optional[int] = None):
-        """Get activities for a specific contact."""
-        args = {"contact_email": contact_email}
-        if limit is not None:
-            args["limit"] = limit
-        return await self.call_tool("get_activities", args)
-
-    async def get_all_activities(self, limit_contacts: int = 10, limit_activities_per_contact: int = 50):
-        """
-        Get activities for multiple contacts.
-        
-        Args:
-            limit_contacts: Number of contacts to fetch activities for
-            limit_activities_per_contact: Max activities per contact
-        """
-        return await self.call_tool("get_all_activities", {
-            "limit_contacts": limit_contacts,
-            "limit_activities_per_contact": limit_activities_per_contact
+    async def get_recent_activities_by_date(self, start_date: str, end_date: str, limit_contacts: int = 50):
+        """Get activities for contacts created within a specific date range."""
+        return await self.call_tool("get_recent_activities_by_date", {
+            "start_date": start_date,
+            "end_date": end_date,
+            "limit_contacts": limit_contacts
         })
 
-    async def get_recent_contacts_resource(self):
-        """Get recent contacts using the resource URI."""
-        return await self.read_resource("hubspot://contacts/recent")
-
-    async def get_all_contacts_resource(self):
-        """Get all contacts using the resource URI with pagination."""
-        return await self.read_resource("hubspot://contacts/all")
-
 async def main():
+    """Main function - focuses ONLY on recent contacts and their activities"""
     if not os.path.exists("hubspot_server.py"):
         print("Error: hubspot_server.py not found in current directory.")
         return
 
     async with HubSpotMCPClient() as client:
         print("=" * 80)
-        print("HUBSPOT MCP CLIENT - FIXED VERSION WITH PAGINATION")
+        print("HUBSPOT RECENT CONTACTS & ACTIVITIES REPORT")
         print("=" * 80)
         
-        # 1. Fetch ALL contacts (with pagination)
-        print("\n📋 FETCHING ALL CONTACTS (WITH PAGINATION)...")
-        print("This may take a while if you have many contacts...")
-        all_contacts = await client.list_contacts(limit=None, fetch_all=True)
-        print(all_contacts)
-        
-        # 2. Fetch contacts from specific date range
-        print("\n\n📅 FETCHING CONTACTS FROM LAST 7 DAYS...")
-        from datetime import datetime, timedelta
         today = datetime.now()
-        week_ago = today - timedelta(days=7)
-        recent_contacts = await client.list_contacts_by_date_range(
-            start_date=week_ago.strftime('%Y-%m-%d'),
+        
+        # 1. Get contacts from last 30 days
+        print("\n📅 STEP 1: CONTACTS FROM LAST 30 DAYS")
+        print("-" * 80)
+        days_30 = today - timedelta(days=30)
+        contacts_30d = await client.list_contacts_by_date_range(
+            start_date=days_30.strftime('%Y-%m-%d'),
             end_date=today.strftime('%Y-%m-%d'),
-            limit=100
+            limit=200  # Changed from 500 to 200 (HubSpot max)
         )
-        print(recent_contacts)
+        print(contacts_30d)
         
-        # 3. Get contact details
-        print("\n\n👤 FETCHING SPECIFIC CONTACT DETAILS...")
-        # Extract first contact with email
-        lines = all_contacts.split('\n')
-        first_contact_email = None
-        for line in lines:
-            if '@' in line and '|' in line and 'Email' not in line:
-                parts = line.split('|')
-                if len(parts) >= 2:
-                    email = parts[1].strip()
-                    if email != "None":
-                        first_contact_email = email
-                        break
-        
-        if first_contact_email:
-            status = await client.get_contact_status(first_contact_email)
-            print(status)
-            
-            # 4. Get activities for specific contact
-            print(f"\n\n📅 FETCHING ACTIVITIES FOR {first_contact_email}...")
-            activities = await client.get_activities(first_contact_email, limit=100)
-            print(activities)
-        else:
-            print("No contacts with email found.")
-        
-        # 5. Get activities for multiple contacts
-        print("\n\n🔄 FETCHING ACTIVITIES FOR MULTIPLE CONTACTS (First 10)...")
-        all_activities = await client.get_all_activities(
-            limit_contacts=10,
-            limit_activities_per_contact=50
+        # 2. Get activities for contacts created in last 30 days
+        print("\n\n📞 STEP 2: ACTIVITIES FOR CONTACTS FROM LAST 30 DAYS")
+        print("-" * 80)
+        activities_30d = await client.get_recent_activities_by_date(
+            start_date=days_30.strftime('%Y-%m-%d'),
+            end_date=today.strftime('%Y-%m-%d'),
+            limit_contacts=100
         )
-        print(all_activities)
-        
-        # 6. Use resources
-        print("\n\n📦 FETCHING RECENT CONTACTS VIA RESOURCE...")
-        recent_resource = await client.get_recent_contacts_resource()
-        print(recent_resource)
+        print(activities_30d)
         
         print("\n\n" + "=" * 80)
-        print("✅ ALL OPERATIONS COMPLETED")
-        print("=" * 80)
+        print("✅ REPORT COMPLETED")
+        print("- Last 30 days: Contacts and their activities")
 
-async def demo_specific_scenarios():
-    """Demo specific use cases"""
+async def custom_date_report():
+    """Generate report for specific date ranges"""
     async with HubSpotMCPClient() as client:
         print("\n" + "=" * 80)
-        print("DEMO: SPECIFIC SCENARIOS")
+        print("CUSTOM DATE RANGE REPORT")
         print("=" * 80)
         
-        # Scenario 1: Get exactly 250 contacts
-        print("\n📊 Scenario 1: Fetch exactly 250 contacts")
-        contacts_250 = await client.list_contacts(limit=250, fetch_all=True)
-        print(contacts_250)
-        
-        # Scenario 2: Get contacts from March 2025
-        print("\n📊 Scenario 2: Get contacts from March 2025")
-        march_contacts = await client.list_contacts_by_date_range(
-            start_date="2025-03-01",
-            end_date="2025-03-31",
-            limit=500
+        # September 2025 contacts
+        print("\n📅 CONTACTS FROM SEPTEMBER 2025")
+        sep_contacts = await client.list_contacts_by_date_range(
+            start_date="2025-09-01",
+            end_date="2025-09-30",
+            limit=200 
         )
-        print(march_contacts)
+        print(sep_contacts)
         
-        # Scenario 3: Get all activities for top 5 contacts
-        print("\n📊 Scenario 3: Get activities for top 5 contacts")
-        top_5_activities = await client.get_all_activities(
-            limit_contacts=5,
-            limit_activities_per_contact=100
+        print("\n📞 ACTIVITIES FOR SEPTEMBER 2025 CONTACTS")
+        sep_activities = await client.get_recent_activities_by_date(
+            start_date="2025-09-01",
+            end_date="2025-09-30",
+            limit_contacts=100
         )
-        print(top_5_activities)
+        print(sep_activities)
+        
+        # October 2025 contacts
+        print("\n\n📅 CONTACTS FROM OCTOBER 2025")
+        oct_contacts = await client.list_contacts_by_date_range(
+            start_date="2025-10-01",
+            end_date="2025-10-31",
+            limit=200  # Changed from 500 to 200
+        )
+        print(oct_contacts)
+        
+        print("\n📞 ACTIVITIES FOR OCTOBER 2025 CONTACTS")
+        oct_activities = await client.get_recent_activities_by_date(
+            start_date="2025-10-01",
+            end_date="2025-10-31",
+            limit_contacts=100
+        )
+        print(oct_activities)
+        
+        # November 2025 contacts
+        print("\n\n📅 CONTACTS FROM NOVEMBER 2025")
+        nov_contacts = await client.list_contacts_by_date_range(
+            start_date="2025-11-01",
+            end_date="2025-11-30",
+            limit=200  
+        )
+        print(nov_contacts)
+        
+        print("\n📞 ACTIVITIES FOR NOVEMBER 2025 CONTACTS")
+        nov_activities = await client.get_recent_activities_by_date(
+            start_date="2025-11-01",
+            end_date="2025-11-30",
+            limit_contacts=100
+        )
+        print(nov_activities)
 
 if __name__ == "__main__":
-    # Run main demo
     asyncio.run(main())
     
-    # Uncomment to run specific scenarios
-    # asyncio.run(demo_specific_scenarios())
+    # Uncomment to run custom date report (Sep, Oct, Nov 2025)
+    # asyncio.run(custom_date_report())

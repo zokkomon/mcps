@@ -1,0 +1,43 @@
+================================================================================
+PROJECT COMPLETION REPORT: D3
+Generated: 2025-11-27T14:49:31.128117
+Repositories: InfiniumDevIO/DRA
+================================================================================
+
+ ASSIGNEE: mayur
+--------------------------------------------------------------------------------
+Total Tickets: 1
+Total Commits: 30
+   Completed: 0
+   Likely Done: 1
+   In Progress: 0
+   Pending: 0
+
+ TICKET DETAILS:
+
+   [D3-18] DRA_Gits Exterior Devlopment-texture /lighting /Landscape
+     Jira Status: Team Tasks | Type: Unknown
+     Analysis: LIKELY_DONE (Confidence: 75%)
+     Reasoning: Multiple commits mention 'DRA' and updates related to it. The ticket summary mentions 'DRA_Gits Exterior Development' which aligns with the repository name and the nature of the updates. While there's no explicit ticket reference, the frequency and nature of the DRA updates suggest progress on this ticket.
+     Related Commits:
+       - [DRA] 594c4dd: Update DRA
+       - [DRA] 2623196: Update DRA
+       - [DRA] df7d3f5: Update DRA
+
+ ASSIGNEE: rahul
+--------------------------------------------------------------------------------
+Total Tickets: 1
+Total Commits: 30
+   Completed: 0
+   Likely Done: 0
+   In Progress: 0
+   Pending: 1
+
+ TICKET DETAILS:
+
+   [D3-7] Indoorgame Assest Model Placement
+     Jira Status: Scope of Work | Type: Unknown
+     Analysis: PENDING (Confidence: 10%)
+     Reasoning: No commits explicitly mention 'D3-7' or 'Indoorgame Assest Model Placement'. The commits are primarily related to DRA and Ratna updates, with no clear connection to the ticket's objective.
+
+================================================================================

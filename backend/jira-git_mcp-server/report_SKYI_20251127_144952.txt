@@ -1,0 +1,104 @@
+================================================================================
+PROJECT COMPLETION REPORT: SKYI
+Generated: 2025-11-27T14:49:52.529127
+Repositories: InfiniumDevIO/SkyI, InfiniumDevIO/skyi-Backend
+================================================================================
+
+ ASSIGNEE: zaid
+--------------------------------------------------------------------------------
+Total Tickets: 14
+Total Commits: 1
+   Completed: 0
+   Likely Done: 0
+   In Progress: 0
+   Pending: 14
+
+ TICKET DETAILS:
+
+   [SKYI-12] Implement SF Pro fonts everywhere.
+     Jira Status: testing | Type: Unknown
+     Analysis: PENDING (Confidence: 10%)
+     Reasoning: No commits found that explicitly or semantically relate to implementing SF Pro fonts. The initial commit does not provide any information related to this ticket.
+
+   [SKYI-19] SKYI New Changes/Suggestions After Meeting.
+     Jira Status: In Progress | Type: Unknown
+     Analysis: PENDING (Confidence: 10%)
+     Reasoning: The initial commit does not provide enough information to determine if it addresses any specific changes or suggestions from a meeting. No related commits found.
+
+   [SKYI-20] Creating Amenities slider
+     Jira Status: testing | Type: Unknown
+     Analysis: PENDING (Confidence: 10%)
+     Reasoning: No commits found that explicitly or semantically relate to creating an amenities slider. The initial commit does not provide any information related to this ticket.
+
+   [SKYI-4] 5 Racecourse Page Mapping
+     Jira Status: testing | Type: Unknown
+     Analysis: PENDING (Confidence: 10%)
+     Reasoning: No commits found that explicitly or semantically relate to mapping the 5 Racecourse page. The initial commit does not provide any information related to this ticket.
+
+   [SKYI-7] Add Filters and Elements for Racecourse Page.
+     Jira Status: testing | Type: Unknown
+     Analysis: PENDING (Confidence: 10%)
+     Reasoning: No commits found that explicitly or semantically relate to adding filters and elements for the Racecourse page. The initial commit does not provide any information related to this ticket.
+
+   [SKYI-3] Third Page Elements and Mapping with Animation
+     Jira Status: testing | Type: Unknown
+     Analysis: PENDING (Confidence: 10%)
+     Reasoning: No commits found that explicitly or semantically relate to the third page elements, mapping, or animation. The initial commit does not provide any information related to this ticket.
+
+   [SKYI-11] Implement Floorplan and unitplans for Skyi Racecourse
+     Jira Status: testing | Type: Unknown
+     Analysis: PENDING (Confidence: 10%)
+     Reasoning: No commits found that explicitly or semantically relate to implementing floorplans or unitplans for Skyi Racecourse. The initial commit does not provide any information related to this ticket.
+
+   [SKYI-13] Add Scrollable Project Buttons
+     Jira Status: testing | Type: Unknown
+     Analysis: PENDING (Confidence: 10%)
+     Reasoning: No commits found that explicitly or semantically relate to adding scrollable project buttons. The initial commit does not provide any information related to this ticket.
+
+   [SKYI-9] Add Isomatric Images for SKYI Racecourse.
+     Jira Status: testing | Type: Unknown
+     Analysis: PENDING (Confidence: 10%)
+     Reasoning: No commits found that explicitly or semantically relate to adding isometric images for SKYI Racecourse. The initial commit does not provide any information related to this ticket.
+
+   [SKYI-16] Align distance and time properly for racecourse Page.
+     Jira Status: testing | Type: Unknown
+     Analysis: PENDING (Confidence: 10%)
+     Reasoning: No commits found that explicitly or semantically relate to aligning distance and time on the racecourse page. The initial commit does not provide any information related to this ticket.
+
+   [SKYI-6] New Pins For Racecourse Page.
+     Jira Status: testing | Type: Unknown
+     Analysis: PENDING (Confidence: 10%)
+     Reasoning: No commits found that explicitly or semantically relate to adding new pins for the Racecourse page. The initial commit does not provide any information related to this ticket.
+
+   [SKYI-5] Create Custom Ring Road. Add in SDG Animation .
+     Jira Status: testing | Type: Unknown
+     Analysis: PENDING (Confidence: 10%)
+     Reasoning: No commits found that explicitly or semantically relate to creating a custom ring road or adding SDG animation. The initial commit does not provide any information related to this ticket.
+
+   [SKYI-10] Show GrowthArea By default and Projects pins by default.
+     Jira Status: testing | Type: Unknown
+     Analysis: PENDING (Confidence: 10%)
+     Reasoning: No commits found that explicitly or semantically relate to showing GrowthArea or project pins by default. The initial commit does not provide any information related to this ticket.
+
+   [SKYI-1] First Page Mapping
+     Jira Status: testing | Type: Unknown
+     Analysis: PENDING (Confidence: 10%)
+     Reasoning: No commits found that explicitly or semantically relate to first page mapping. The initial commit does not provide any information related to this ticket.
+
+ ASSIGNEE: Jagruti Suthar
+--------------------------------------------------------------------------------
+Total Tickets: 1
+Total Commits: 1
+   Completed: 0
+   Likely Done: 0
+   In Progress: 0
+   Pending: 1
+
+ TICKET DETAILS:
+
+   [SKYI-2] Second Page Elements and Mapping with Animation
+     Jira Status: testing | Type: Unknown
+     Analysis: PENDING (Confidence: 10%)
+     Reasoning: The commit message 'Initial commit' does not provide any information related to the ticket summary 'Second Page Elements and Mapping with Animation'. There is no explicit reference to the ticket key, nor any semantic connection to the ticket's description. The author of the commit is Rohan Hundia, while the assignee is Jagruti Suthar, further reducing the likelihood of a match.
+
+================================================================================
