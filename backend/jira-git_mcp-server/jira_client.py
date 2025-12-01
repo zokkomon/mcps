@@ -25,7 +25,7 @@ class JiraMCPClient:
         env["JIRA_USERNAME"] = self.jira_username
         env["JIRA_API_TOKEN"] = self.jira_api_token
 
-        server_script = os.path.join(os.getcwd(), "jira_server.py")
+        server_script = os.path.join(os.getcwd(), "jira-git_mcp-server", "jira_server.py")
 
         server_params = StdioServerParameters(
             command=sys.executable,

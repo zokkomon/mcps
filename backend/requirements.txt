@@ -1,0 +1,9 @@
+Flask
+flask-cors
+python-dotenv
+pydantic
+python-multipart
+
+asyncio
+mcp
+google-genai

@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from datetime import datetime, timedelta
+import json
 
 load_dotenv()
 
@@ -22,7 +23,7 @@ class HubSpotMCPClient:
         env = os.environ.copy()
         env["HUBSPOT_API_KEY"] = self.hubspot_api_key
 
-        server_script = os.path.join(os.getcwd(), "hubspot_server.py")
+        server_script = os.path.join(os.getcwd(), "hubspot-mcp-server", "hubspot_server.py")
 
         server_params = StdioServerParameters(
             command=sys.executable,
@@ -63,24 +64,143 @@ class HubSpotMCPClient:
 
     async def list_contacts_by_date_range(self, start_date: str, end_date: str, limit: int = 100):
         """Get contacts created within a date range."""
-        return await self.call_tool("list_contacts_by_date_range", {
+        result = await self.call_tool("list_contacts_by_date_range", {
             "start_date": start_date,
             "end_date": end_date,
             "limit": limit
         })
+        return self._parse_contacts_response(result)
 
     async def get_recent_activities_by_date(self, start_date: str, end_date: str, limit_contacts: int = 50):
         """Get activities for contacts created within a specific date range."""
-        return await self.call_tool("get_recent_activities_by_date", {
-            "start_date": start_date,
-            "end_date": end_date,
-            "limit_contacts": limit_contacts
-        })
+        try:
+            result = await self.call_tool("get_recent_activities_by_date", {
+                "start_date": start_date,
+                "end_date": end_date,
+                "limit_contacts": limit_contacts
+            })
+            return self._parse_activities_response(result)
+        except Exception as e:
+            print(f"Error fetching activities: {e}")
+            return {
+                "error": str(e),
+                "activities": []
+            }
+
+    def _parse_contacts_response(self, response: str) -> Dict[str, Any]:
+        """Parse the contacts response into structured data"""
+        try:
+            lines = response.strip().split('\n')
+            contacts = []
+            leads_by_date = {}
+            
+            # Parse contacts
+            in_contacts_section = False
+            for line in lines:
+                if 'Contact Name' in line and 'Email' in line:
+                    in_contacts_section = True
+                    continue
+                
+                if in_contacts_section and '|' in line and '---' not in line:
+                    parts = [p.strip() for p in line.split('|')]
+                    if len(parts) >= 6:
+                        contact = {
+                            'name': parts[0],
+                            'email': parts[1],
+                            'lead_status': parts[2],
+                            'lifecycle_stage': parts[3],
+                            'company': parts[4],
+                            'created_date': parts[5]
+                        }
+                        contacts.append(contact)
+                        
+                        # Track by date
+                        date = parts[5].split()[0] if parts[5] else 'Unknown'
+                        leads_by_date[date] = leads_by_date.get(date, 0) + 1
+                
+                if '=== LEADS ADDED BY DATE ===' in line:
+                    in_contacts_section = False
+            
+            # Parse leads by date from the report section
+            in_leads_section = False
+            for line in lines:
+                if 'Date       | Lead Count' in line:
+                    in_leads_section = True
+                    continue
+                if in_leads_section and '|' in line and '---' not in line and line.strip():
+                    parts = [p.strip() for p in line.split('|')]
+                    if len(parts) >= 2:
+                        try:
+                            date = parts[0]
+                            count = int(parts[1])
+                            leads_by_date[date] = count
+                        except:
+                            pass
+            
+            # Sort leads by date descending
+            sorted_leads = sorted(leads_by_date.items(), key=lambda x: x[0], reverse=True)
+            
+            return {
+                'contacts': contacts,
+                'total_contacts': len(contacts),
+                'leads_by_date': sorted_leads,
+                'raw_response': response
+            }
+        except Exception as e:
+            print(f"Error parsing contacts: {e}")
+            return {
+                'contacts': [],
+                'total_contacts': 0,
+                'leads_by_date': [],
+                'raw_response': response
+            }
+
+    def _parse_activities_response(self, response: str) -> Dict[str, Any]:
+        """Parse the activities response into structured data"""
+        try:
+            if not response or response == "No content returned":
+                return {
+                    "error": "No activities data available",
+                    "activities": []
+                }
+            
+            lines = response.strip().split('\n')
+            activities = []
+            
+            current_contact = None
+            for line in lines:
+                if '===' in line and 'CONTACT:' in line:
+                    # Extract contact name
+                    current_contact = line.split('CONTACT:')[1].split('===')[0].strip()
+                elif current_contact and '|' in line and '---' not in line:
+                    parts = [p.strip() for p in line.split('|')]
+                    if len(parts) >= 4:
+                        activities.append({
+                            'contact': current_contact,
+                            'type': parts[0],
+                            'subject': parts[1],
+                            'timestamp': parts[2],
+                            'details': parts[3] if len(parts) > 3 else ''
+                        })
+            
+            return {
+                'activities': activities,
+                'total_activities': len(activities),
+                'raw_response': response
+            }
+        except Exception as e:
+            print(f"Error parsing activities: {e}")
+            return {
+                'error': str(e),
+                'activities': [],
+                'raw_response': response
+            }
+
 
 async def main():
     """Main function - focuses ONLY on recent contacts and their activities"""
-    if not os.path.exists("hubspot_server.py"):
-        print("Error: hubspot_server.py not found in current directory.")
+    if not os.path.exists("hubspot-mcp-server/hubspot_server.py"):
+        print("Error: hubspot_server.py not found.")
         return
 
     async with HubSpotMCPClient() as client:
@@ -94,87 +214,23 @@ async def main():
         print("\n📅 STEP 1: CONTACTS FROM LAST 30 DAYS")
         print("-" * 80)
         days_30 = today - timedelta(days=30)
-        contacts_30d = await client.list_contacts_by_date_range(
+        contacts_data = await client.list_contacts_by_date_range(
             start_date=days_30.strftime('%Y-%m-%d'),
             end_date=today.strftime('%Y-%m-%d'),
-            limit=200  # Changed from 500 to 200 (HubSpot max)
+            limit=200 
         )
-        print(contacts_30d)
+        print(json.dumps(contacts_data, indent=2))
         
         # 2. Get activities for contacts created in last 30 days
         print("\n\n📞 STEP 2: ACTIVITIES FOR CONTACTS FROM LAST 30 DAYS")
         print("-" * 80)
-        activities_30d = await client.get_recent_activities_by_date(
+        activities_data = await client.get_recent_activities_by_date(
             start_date=days_30.strftime('%Y-%m-%d'),
             end_date=today.strftime('%Y-%m-%d'),
             limit_contacts=100
         )
-        print(activities_30d)
-        
-        print("\n\n" + "=" * 80)
-        print("✅ REPORT COMPLETED")
-        print("- Last 30 days: Contacts and their activities")
+        print(json.dumps(activities_data, indent=2))
 
-async def custom_date_report():
-    """Generate report for specific date ranges"""
-    async with HubSpotMCPClient() as client:
-        print("\n" + "=" * 80)
-        print("CUSTOM DATE RANGE REPORT")
-        print("=" * 80)
-        
-        # September 2025 contacts
-        print("\n📅 CONTACTS FROM SEPTEMBER 2025")
-        sep_contacts = await client.list_contacts_by_date_range(
-            start_date="2025-09-01",
-            end_date="2025-09-30",
-            limit=200 
-        )
-        print(sep_contacts)
-        
-        print("\n📞 ACTIVITIES FOR SEPTEMBER 2025 CONTACTS")
-        sep_activities = await client.get_recent_activities_by_date(
-            start_date="2025-09-01",
-            end_date="2025-09-30",
-            limit_contacts=100
-        )
-        print(sep_activities)
-        
-        # October 2025 contacts
-        print("\n\n📅 CONTACTS FROM OCTOBER 2025")
-        oct_contacts = await client.list_contacts_by_date_range(
-            start_date="2025-10-01",
-            end_date="2025-10-31",
-            limit=200  # Changed from 500 to 200
-        )
-        print(oct_contacts)
-        
-        print("\n📞 ACTIVITIES FOR OCTOBER 2025 CONTACTS")
-        oct_activities = await client.get_recent_activities_by_date(
-            start_date="2025-10-01",
-            end_date="2025-10-31",
-            limit_contacts=100
-        )
-        print(oct_activities)
-        
-        # November 2025 contacts
-        print("\n\n📅 CONTACTS FROM NOVEMBER 2025")
-        nov_contacts = await client.list_contacts_by_date_range(
-            start_date="2025-11-01",
-            end_date="2025-11-30",
-            limit=200  
-        )
-        print(nov_contacts)
-        
-        print("\n📞 ACTIVITIES FOR NOVEMBER 2025 CONTACTS")
-        nov_activities = await client.get_recent_activities_by_date(
-            start_date="2025-11-01",
-            end_date="2025-11-30",
-            limit_contacts=100
-        )
-        print(nov_activities)
 
 if __name__ == "__main__":
     asyncio.run(main())
-    
-    # Uncomment to run custom date report (Sep, Oct, Nov 2025)
-    # asyncio.run(custom_date_report())
