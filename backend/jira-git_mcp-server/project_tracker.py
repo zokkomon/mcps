@@ -1,6 +1,7 @@
 import asyncio
 import os
 import json
+import time
 import logging
 from typing import Dict, List, Optional, Any
 from datetime import datetime
@@ -55,7 +56,7 @@ class GeminiProgressAnalyzer:
     """Use Gemini LLM to intelligently match tickets to commits"""
     
     def __init__(self):
-        self.model = "gemini-2.0-flash-exp"
+        self.model = "gemini-3-pro-preview"
         self.client = genai_client
     
     def analyze_assignee_progress(
@@ -151,6 +152,7 @@ class GeminiProgressAnalyzer:
         """
         
         try:
+            time.sleep(5)
             logging.info(f"Analyzing {len(tickets)} tickets with Gemini LLM...")
             
             contents = [
@@ -242,7 +244,7 @@ class DynamicProjectTracker:
     
     async def discover_github_user(self) -> Dict[str, str]:
         """Auto-discover the authenticated GitHub user"""
-        logging.info("🔍 Discovering GitHub user...")
+        logging.info("Discovering GitHub user...")
         
         user = await self.github_client.get_current_user()
         
@@ -283,7 +285,7 @@ class DynamicProjectTracker:
     async def get_project_issues_by_assignee(
         self, 
         project_key: str,
-        status_filter: str = "active"
+        status_filter: str = "all"
     ) -> Dict[str, List[Dict]]:
         """Fetch all issues from a Jira project grouped by assignee"""
         if status_filter == "active":
@@ -439,7 +441,7 @@ class DynamicProjectTracker:
     async def analyze_project(
         self,
         project_key: str,
-        status_filter: str = "active"
+        status_filter: str = "all"
     ) -> Dict[str, Any]:
         """Complete analysis with LLM-powered matching"""
         logging.info(f"=" * 70)
@@ -648,7 +650,7 @@ async def interactive_mode():
                             try:
                                 analysis = await tracker.analyze_project(
                                     project_key=proj['key'],
-                                    status_filter="active"
+                                    status_filter="all"
                                 )
                                 
                                 report = tracker.generate_report(analysis)
@@ -672,7 +674,7 @@ async def interactive_mode():
                     # Analyze
                     analysis = await tracker.analyze_project(
                         project_key=selected_project['key'],
-                        status_filter="active"
+                        status_filter="all"
                     )
                     
                     # Generate and display report
